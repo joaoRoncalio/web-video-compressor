@@ -1,0 +1,262 @@
+const { app, BrowserWindow, ipcMain } = require("electron");
+const path = require("path");
+const fs = require("fs");
+const { execFile, spawn } = require("child_process");
+
+const FFMPEG = "/opt/homebrew/bin/ffmpeg";
+const FFPROBE = "/opt/homebrew/bin/ffprobe";
+
+let mainWindow;
+let currentProc = null;
+let cancelRequested = false;
+
+app.whenReady().then(() => {
+  mainWindow = new BrowserWindow({
+    width: 720,
+    height: 700,
+    resizable: true,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      additionalArguments: [`--app-version=${app.getVersion()}`],
+    },
+  });
+  mainWindow.loadFile("index.html");
+});
+
+app.on("window-all-closed", () => app.quit());
+
+// Extract first frame as optimized JPEG thumbnail
+function generateThumbnail(videoPath) {
+  const dir = path.dirname(videoPath);
+  const base = path.basename(videoPath, path.extname(videoPath));
+  const thumbPath = uniquePath(path.join(dir, `${base}_thumb.jpg`));
+  return new Promise((resolve, reject) => {
+    execFile(
+      FFMPEG,
+      [
+        "-y", "-i", videoPath,
+        "-vframes", "1", "-q:v", "2",
+        thumbPath,
+      ],
+      (err) => (err ? reject(err) : resolve(thumbPath))
+    );
+  });
+}
+
+// Find a non-colliding output path: foo_web.mp4 -> foo_web-2.mp4 -> foo_web-3.mp4 ...
+function uniquePath(filePath) {
+  if (!fs.existsSync(filePath)) return filePath;
+  const dir = path.dirname(filePath);
+  const ext = path.extname(filePath);
+  const base = path.basename(filePath, ext);
+  let i = 2;
+  while (fs.existsSync(path.join(dir, `${base}-${i}${ext}`))) i++;
+  return path.join(dir, `${base}-${i}${ext}`);
+}
+
+// Recursively scan a directory for video files
+const VIDEO_EXTENSIONS = new Set([
+  ".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".flv", ".wmv",
+]);
+
+function scanForVideos(dirPath) {
+  const results = [];
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...scanForVideos(fullPath));
+    } else if (VIDEO_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+      const nameNoExt = path.basename(entry.name, path.extname(entry.name));
+      const isOurOutput = /_short-heavy-compress(-\d+)?$|_web(-\d+)?$|_thumb(-\d+)?$/.test(nameNoExt);
+      if (!isOurOutput) results.push(fullPath);
+    }
+  }
+  return results;
+}
+
+ipcMain.handle("scan-path", async (_event, filePath) => {
+  try {
+    const stat = fs.statSync(filePath);
+    if (stat.isDirectory()) {
+      return scanForVideos(filePath);
+    }
+    return [filePath];
+  } catch {
+    return [];
+  }
+});
+
+// Get video duration in seconds
+function getVideoDuration(filePath) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      FFPROBE,
+      [
+        "-v", "quiet",
+        "-print_format", "json",
+        "-show_format",
+        filePath,
+      ],
+      (err, stdout) => {
+        if (err) return reject(err);
+        try {
+          const info = JSON.parse(stdout);
+          resolve(parseFloat(info.format.duration));
+        } catch (e) {
+          reject(e);
+        }
+      }
+    );
+  });
+}
+
+// Run ffmpeg and report progress
+function runFfmpeg(args, duration, jobId) {
+  return new Promise((resolve, reject) => {
+    cancelRequested = false;
+    const proc = spawn(FFMPEG, args);
+    currentProc = proc;
+    let stderr = "";
+
+    proc.stderr.on("data", (data) => {
+      stderr += data.toString();
+      // Parse progress from ffmpeg stderr
+      const timeMatch = data.toString().match(/time=(\d+):(\d+):(\d+\.\d+)/);
+      if (timeMatch && duration > 0) {
+        const secs =
+          parseInt(timeMatch[1]) * 3600 +
+          parseInt(timeMatch[2]) * 60 +
+          parseFloat(timeMatch[3]);
+        const progress = Math.min(100, Math.round((secs / duration) * 100));
+        mainWindow?.webContents.send("job-progress", { jobId, progress });
+      }
+    });
+
+    proc.on("close", (code) => {
+      currentProc = null;
+      if (cancelRequested) {
+        cancelRequested = false;
+        reject(new Error("CANCELLED"));
+        return;
+      }
+      if (code === 0) resolve();
+      else reject(new Error(`ffmpeg exited with code ${code}\n${stderr.slice(-500)}`));
+    });
+
+    proc.on("error", (err) => {
+      currentProc = null;
+      reject(err);
+    });
+  });
+}
+
+ipcMain.handle("cancel-job", () => {
+  if (currentProc) {
+    cancelRequested = true;
+    currentProc.kill("SIGTERM");
+  }
+});
+
+// Standard web compression (webvid equivalent)
+ipcMain.handle("compress-standard", async (_event, filePath, generateThumb, jobId) => {
+  console.log("[standard] filePath:", filePath);
+  const dir = path.dirname(filePath);
+  const ext = path.extname(filePath);
+  const base = path.basename(filePath, ext);
+  const output = uniquePath(path.join(dir, `${base}_web.mp4`));
+
+  const duration = await getVideoDuration(filePath);
+
+  const args = [
+    "-y", "-i", filePath,
+    "-map", "0:v:0", "-map", "0:a:0?",
+    "-c:v", "libx264", "-crf", "24", "-preset", "slow",
+    "-profile:v", "high", "-level", "4.1",
+    "-pix_fmt", "yuv420p",
+    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+    "-movflags", "+faststart",
+    "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2",
+    output,
+  ];
+
+  await runFfmpeg(args, duration, jobId);
+  if (generateThumb) await generateThumbnail(output);
+  return output;
+});
+
+// Heavy compression: trim to N seconds, target 2MB max
+ipcMain.handle("compress-heavy", async (_event, filePath, maxSeconds, includeAudio, generateThumb, jobId) => {
+  console.log("[heavy] filePath:", filePath, "maxSeconds:", maxSeconds, "audio:", includeAudio);
+  const dir = path.dirname(filePath);
+  const ext = path.extname(filePath);
+  const base = path.basename(filePath, ext);
+  const output = uniquePath(path.join(dir, `${base}_short-heavy-compress.mp4`));
+
+  const totalDuration = await getVideoDuration(filePath);
+  const clipDuration = Math.min(maxSeconds, totalDuration);
+
+  // Target 2MB = 2 * 1024 * 8 kbits = 16384 kbits
+  const targetSizeKbits = 2 * 1024 * 8;
+  const audioBitrate = includeAudio ? 128 : 0; // kbps
+  const videoBitrate = Math.floor(targetSizeKbits / clipDuration - audioBitrate);
+
+  // Ensure minimum video bitrate
+  const finalVideoBitrate = Math.max(100, videoBitrate);
+
+  // Two-pass encoding for best quality at target size
+  const passLogFile = path.join(dir, `${base}_2pass`);
+
+  // Pass 1
+  const pass1Args = [
+    "-y", "-i", filePath,
+    "-t", String(clipDuration),
+    "-map", "0:v:0",
+    "-c:v", "libx264", "-b:v", `${finalVideoBitrate}k`,
+    "-preset", "slow", "-pass", "1",
+    "-passlogfile", passLogFile,
+    "-profile:v", "high", "-level", "4.1",
+    "-pix_fmt", "yuv420p",
+    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+    "-an", "-f", "null",
+    process.platform === "win32" ? "NUL" : "/dev/null",
+  ];
+
+  await runFfmpeg(pass1Args, clipDuration, jobId);
+
+  // Pass 2
+  const pass2Args = [
+    "-y", "-i", filePath,
+    "-t", String(clipDuration),
+    "-map", "0:v:0",
+    ...(includeAudio ? ["-map", "0:a:0?"] : []),
+    "-c:v", "libx264", "-b:v", `${finalVideoBitrate}k`,
+    "-preset", "slow", "-pass", "2",
+    "-passlogfile", passLogFile,
+    "-profile:v", "high", "-level", "4.1",
+    "-pix_fmt", "yuv420p",
+    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+    "-movflags", "+faststart",
+  ];
+
+  if (includeAudio) {
+    pass2Args.push("-c:a", "aac", "-b:a", `${audioBitrate}k`, "-ar", "48000", "-ac", "2");
+  } else {
+    pass2Args.push("-an");
+  }
+
+  pass2Args.push(output);
+
+  await runFfmpeg(pass2Args, clipDuration, jobId);
+
+  // Clean up pass log files
+  for (const suffix of ["-0.log", "-0.log.mbtree"]) {
+    const logFile = passLogFile + suffix;
+    try { fs.unlinkSync(logFile); } catch {}
+  }
+
+  if (generateThumb) await generateThumbnail(output);
+  return output;
+});

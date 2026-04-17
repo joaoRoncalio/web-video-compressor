@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Compressorfiore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "JetBrains Mono", monospace;
+        background: #040404;
+        color: #f0f0f0;
+        padding: 28px 32px;
+        user-select: none;
+        min-height: 100vh;
+      }
+
+      .version {
+        position: fixed;
+        top: 8px;
+        left: 12px;
+        font-size: 9px;
+        font-weight: 600;
+        color: #3a3a3a;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        pointer-events: none;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 20px;
+        color: #f8f6f0;
+        text-align: center;
+      }
+
+      /* Zone settings (inline controls inside drop zones) */
+      .zone-settings {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 8px;
+      }
+
+      .zone-setting {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #999;
+      }
+
+      .zone-setting input[type="number"] {
+        font-family: "JetBrains Mono", monospace;
+        width: 52px;
+        padding: 4px 6px;
+        border-radius: 6px;
+        border: 2px solid #333;
+        background: #0a0a0a;
+        color: #f8f6f0;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .zone-setting input[type="number"]:focus {
+        outline: none;
+        border-color: #eb6f46;
+      }
+
+      /* Toggle switch */
+      .toggle {
+        position: relative;
+        width: 32px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      .toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle .slider {
+        position: absolute;
+        inset: 0;
+        background: #333;
+        border-radius: 9px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .toggle .slider::before {
+        content: "";
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        left: 2px;
+        top: 2px;
+        background: #666;
+        border-radius: 50%;
+        transition:
+          transform 0.2s,
+          background 0.2s;
+      }
+
+      .toggle input:checked + .slider {
+        background: #eb6f46;
+      }
+
+      .toggle input:checked + .slider::before {
+        transform: translateX(14px);
+        background: #f8f6f0;
+      }
+
+      /* Drop zones container */
+      .zones {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 28px;
+      }
+
+      .drop-zone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 32px 20px;
+        border: 3px solid #222;
+        border-radius: 14px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 150ms ease;
+        min-height: 160px;
+        background: #0a0a0a;
+      }
+
+      .drop-zone:hover {
+        border-color: #444;
+        background: #111;
+      }
+
+      .drop-zone.dragover {
+        border-color: #eb6f46;
+        background: rgba(235, 111, 70, 0.06);
+      }
+
+      .drop-zone.heavy {
+        border-color: #eb6f46;
+      }
+
+      .drop-zone.heavy:hover,
+      .drop-zone.heavy.dragover {
+        border-color: #eb6f46;
+        background: rgba(235, 111, 70, 0.08);
+      }
+
+      .drop-zone.standard {
+        border-color: #333;
+      }
+
+      .drop-zone.standard:hover,
+      .drop-zone.standard.dragover {
+        border-color: #f8f6f0;
+        background: rgba(248, 246, 240, 0.04);
+      }
+
+      .drop-zone .icon {
+        font-size: 28px;
+        opacity: 0.6;
+      }
+
+      .drop-zone .title {
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+
+      .drop-zone .desc {
+        font-size: 11px;
+        font-weight: 500;
+        color: #666;
+        max-width: 220px;
+        line-height: 1.5;
+      }
+
+      .drop-zone.heavy .title {
+        color: #eb6f46;
+      }
+      .drop-zone.standard .title {
+        color: #f8f6f0;
+      }
+
+      /* Queue */
+      .queue-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .queue-section h2 {
+        font-size: 12px;
+        font-weight: 800;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin-bottom: 0;
+      }
+
+      .clear-all-btn {
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #555;
+        background: none;
+        border: 1px solid #222;
+        border-radius: 6px;
+        padding: 4px 10px;
+        cursor: pointer;
+        transition:
+          color 0.15s,
+          border-color 0.15s;
+      }
+
+      .clear-all-btn:hover {
+        color: #eb6f46;
+        border-color: #eb6f46;
+      }
+
+      .queue {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .queue:empty::after {
+        content: "No jobs in queue. Drop videos above to start.";
+        color: #333;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        text-align: center;
+        padding: 24px;
+      }
+
+      .job-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .cancel-btn {
+        background: none;
+        border: 1px solid #333;
+        border-radius: 5px;
+        color: #555;
+        cursor: pointer;
+        font-size: 10px;
+        font-weight: 800;
+        line-height: 1;
+        padding: 3px 7px;
+        transition:
+          color 0.15s,
+          border-color 0.15s;
+      }
+
+      .cancel-btn:hover {
+        color: #eb6f46;
+        border-color: #eb6f46;
+      }
+
+      .job .status.cancelled {
+        color: #555;
+      }
+
+      .job {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: #0f0f0f;
+        border: 2px solid #1a1a1a;
+        border-radius: 10px;
+        font-size: 12px;
+        border-left: 4px solid #333;
+      }
+
+      .job.heavy {
+        border-left-color: #eb6f46;
+      }
+      .job.standard {
+        border-left-color: #f8f6f0;
+      }
+
+      .job .badge {
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 3px 8px;
+        border-radius: 6px;
+        white-space: nowrap;
+      }
+
+      .job.heavy .badge {
+        background: rgba(235, 111, 70, 0.15);
+        color: #eb6f46;
+      }
+
+      .job.standard .badge {
+        background: rgba(248, 246, 240, 0.1);
+        color: #f8f6f0;
+      }
+
+      .job .filename {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 600;
+      }
+
+      .job .status {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #555;
+        white-space: nowrap;
+      }
+
+      .job .status.processing {
+        color: #ffb400;
+      }
+      .job .status.done {
+        color: #4caf50;
+      }
+      .job .status.error {
+        color: #eb6f46;
+      }
+
+      /* Progress bar */
+      .progress-bar {
+        grid-column: 1 / -1;
+        height: 3px;
+        background: #1a1a1a;
+        border-radius: 2px;
+        margin-top: 6px;
+        overflow: hidden;
+      }
+
+      .progress-bar .fill {
+        height: 100%;
+        background: #ffb400;
+        border-radius: 2px;
+        transition: width 0.3s ease;
+        width: 0%;
+      }
+
+      .job.done .progress-bar .fill {
+        background: #4caf50;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="version" id="version"></div>
+    <h1>CompressorFiore</h1>
+
+    <div class="zones">
+      <div
+        class="drop-zone heavy"
+        id="zoneHeavy"
+        role="button"
+        tabindex="0"
+        aria-label="Drop videos here for heavy compression"
+      >
+        <div class="icon">&#x1F525;</div>
+        <div class="title">Heavy Compress</div>
+        <div class="desc">
+          Trim + squeeze to 2MB max.<br />
+          Drop files or folders.
+        </div>
+        <div class="zone-settings" onclick="event.stopPropagation()">
+          <div class="zone-setting">
+            <label for="maxDuration">Clip</label>
+            <input
+              type="number"
+              id="maxDuration"
+              value="6"
+              min="1"
+              max="120"
+              aria-label="Clip duration in seconds"
+            />
+            <span>sec</span>
+          </div>
+          <div class="zone-setting">
+            <label for="heavyAudio">Audio</label>
+            <label class="toggle" style="margin-right: 10px">
+              <input type="checkbox" id="heavyAudio" checked />
+              <span class="slider"></span>
+            </label>
+            <label for="heavyThumb">Thumb</label>
+            <label class="toggle">
+              <input type="checkbox" id="heavyThumb" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div
+        class="drop-zone standard"
+        id="zoneStandard"
+        role="button"
+        tabindex="0"
+        aria-label="Drop videos here for standard web compression"
+      >
+        <div class="icon">&#x1F4E6;</div>
+        <div class="title">Standard Compress</div>
+        <div class="desc">
+          Web-optimized (x264 CRF 24, AAC 128k). Drop files or folders.
+        </div>
+        <div class="zone-settings" onclick="event.stopPropagation()">
+          <div class="zone-setting">
+            <label for="standardThumb">Thumb</label>
+            <label class="toggle">
+              <input type="checkbox" id="standardThumb" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="queue-section">
+      <div class="queue-header">
+        <h2>Queue</h2>
+        <button class="clear-all-btn" id="clearAllBtn" onclick="clearQueue()">
+          Clear All
+        </button>
+      </div>
+      <div class="queue" id="queue" role="list" aria-live="polite"></div>
+    </div>
+
+    <script>
+      const queue = [];
+      let processing = false;
+      let jobCounter = 0;
+
+      const queueEl = document.getElementById("queue");
+      const maxDurationInput = document.getElementById("maxDuration");
+
+      if (window.api?.appVersion) {
+        document.getElementById("version").textContent = `v${window.api.appVersion}`;
+      }
+
+      // Listen for progress updates from main process
+      window.api.onJobProgress(({ jobId, progress }) => {
+        const el = document.querySelector(`[data-job-id="${jobId}"] .fill`);
+        if (el) el.style.width = `${progress}%`;
+        const statusEl = document.querySelector(
+          `[data-job-id="${jobId}"] .status`,
+        );
+        if (statusEl) statusEl.textContent = `${progress}%`;
+      });
+
+      // Setup drop zones
+      function setupZone(el, type) {
+        // Drag events
+        el.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          el.classList.add("dragover");
+        });
+        el.addEventListener("dragleave", () => el.classList.remove("dragover"));
+        el.addEventListener("drop", async (e) => {
+          e.preventDefault();
+          el.classList.remove("dragover");
+          const droppedFiles = [...e.dataTransfer.files];
+          for (const f of droppedFiles) {
+            const droppedPath = window.api.getPathForFile(f);
+            const videoPaths = await window.api.scanPath(droppedPath);
+            videoPaths.forEach((vp) => addJob(vp, vp.split("/").pop(), type));
+          }
+        });
+
+        // Click to open file dialog
+        el.addEventListener("click", () => {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.multiple = true;
+          input.accept = "video/*";
+          input.setAttribute("webkitdirectory", "");
+          input.removeAttribute("webkitdirectory");
+          // Two buttons: let user pick files or folder
+          input.onchange = async () => {
+            for (const f of [...input.files]) {
+              const filePath = window.api.getPathForFile(f);
+              const videoPaths = await window.api.scanPath(filePath);
+              videoPaths.forEach((vp) => addJob(vp, vp.split("/").pop(), type));
+            }
+          };
+          input.click();
+        });
+
+        // Keyboard accessibility
+        el.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            el.click();
+          }
+        });
+      }
+
+      setupZone(document.getElementById("zoneHeavy"), "heavy");
+      setupZone(document.getElementById("zoneStandard"), "standard");
+
+      function addJob(filePath, fileName, type) {
+        const jobId = ++jobCounter;
+        const job = { id: jobId, filePath, fileName, type, status: "pending" };
+        queue.push(job);
+        renderQueue();
+        processNext();
+      }
+
+      function renderQueue() {
+        queueEl.innerHTML = "";
+        queue.forEach((job) => {
+          const div = document.createElement("div");
+          div.className = `job ${job.type}`;
+          div.setAttribute("data-job-id", job.id);
+          div.setAttribute("role", "listitem");
+
+          const badge = job.type === "heavy" ? "Heavy" : "Standard";
+          let statusText = "Waiting...";
+          let statusClass = "";
+          if (job.status === "processing") {
+            statusText = "0%";
+            statusClass = "processing";
+          }
+          if (job.status === "done") {
+            statusText = "Done";
+            statusClass = "done";
+          }
+          if (job.status === "error") {
+            statusText = "Error";
+            statusClass = "error";
+          }
+          if (job.status === "cancelled") {
+            statusText = "Cancelled";
+            statusClass = "cancelled";
+          }
+
+          const cancelBtn =
+            job.status === "processing"
+              ? `<button class="cancel-btn" onclick="cancelJob(${job.id})" aria-label="Cancel job">✕</button>`
+              : "";
+
+          div.innerHTML = `
+          <span class="badge">${badge}</span>
+          <span class="filename" title="${job.fileName}">${job.fileName}</span>
+          <div class="job-actions">
+            <span class="status ${statusClass}">${statusText}</span>
+            ${cancelBtn}
+          </div>
+          <div class="progress-bar"><div class="fill"></div></div>
+        `;
+
+          if (job.status === "done") div.classList.add("done");
+          queueEl.appendChild(div);
+        });
+      }
+
+      function clearQueue() {
+        const processingJob = queue.find((j) => j.status === "processing");
+        queue.length = 0;
+        if (processingJob) queue.push(processingJob);
+        renderQueue();
+      }
+
+      async function cancelJob(jobId) {
+        const job = queue.find((j) => j.id === jobId);
+        if (job) job.status = "cancelled";
+        renderQueue();
+        await window.api.cancelJob();
+      }
+
+      async function processNext() {
+        if (processing) return;
+        const job = queue.find((j) => j.status === "pending");
+        if (!job) return;
+
+        processing = true;
+        job.status = "processing";
+        renderQueue();
+
+        try {
+          if (job.type === "heavy") {
+            const maxSec = parseInt(maxDurationInput.value) || 6;
+            const includeAudio = document.getElementById("heavyAudio").checked;
+            const genThumb = document.getElementById("heavyThumb").checked;
+            await window.api.compressHeavy(
+              job.filePath,
+              maxSec,
+              includeAudio,
+              genThumb,
+              job.id,
+            );
+          } else {
+            const genThumb = document.getElementById("standardThumb").checked;
+            await window.api.compressStandard(job.filePath, genThumb, job.id);
+          }
+          job.status = "done";
+        } catch (err) {
+          if (job.status !== "cancelled") job.status = "error";
+          console.error(`Job ${job.id} failed:`, err);
+        }
+
+        processing = false;
+        renderQueue();
+        processNext();
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
+# macOS noise
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json
+
+# Logs
+npm-debug.log*
+*.log
