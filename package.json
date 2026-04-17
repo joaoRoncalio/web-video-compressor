@@ -1,12 +1,11 @@
 {
   "name": "compressorfiore",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Dead-simple ffmpeg wrapper for web video compression",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --mac",
-    "release": "electron-builder --mac --publish always"
+    "build": "electron-builder --mac"
   },
   "keywords": [],
   "author": "",
@@ -48,6 +47,20 @@
       ],
       "icon": "assets/icon.icns",
       "category": "public.app-category.video"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
     },
     "publish": {
       "provider": "github",

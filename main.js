@@ -31,22 +31,32 @@ app.whenReady().then(() => {
   });
   mainWindow.loadFile("index.html");
 
-  // Update check only — app isn't code-signed, so we can't auto-install
-  // on macOS. Notify the user and link them to the release page instead.
+  // Update behaviour differs by platform: Windows can auto-install without
+  // code signing, macOS cannot — so Mac gets a "download" banner linking to
+  // the release page and Windows auto-downloads + prompts to restart.
   if (app.isPackaged) {
-    autoUpdater.autoDownload = false;
-    autoUpdater.on("update-available", (info) => {
-      mainWindow?.webContents.send("update-available", {
-        version: info.version,
-        url: `https://github.com/joaoRoncalio/web-video-compressor/releases/latest`,
-      });
-    });
     autoUpdater.on("error", (err) => console.error("[updater]", err));
-    autoUpdater.checkForUpdates().catch(() => {});
+
+    if (process.platform === "win32") {
+      autoUpdater.on("update-downloaded", () => {
+        mainWindow?.webContents.send("update-ready-install");
+      });
+      autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    } else {
+      autoUpdater.autoDownload = false;
+      autoUpdater.on("update-available", (info) => {
+        mainWindow?.webContents.send("update-available", {
+          version: info.version,
+          url: "https://github.com/joaoRoncalio/web-video-compressor/releases/latest",
+        });
+      });
+      autoUpdater.checkForUpdates().catch(() => {});
+    }
   }
 });
 
 ipcMain.handle("open-external", (_e, url) => shell.openExternal(url));
+ipcMain.handle("install-update", () => autoUpdater.quitAndInstall());
 
 app.on("window-all-closed", () => app.quit());
 

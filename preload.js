@@ -18,5 +18,8 @@ contextBridge.exposeInMainWorld("api", {
   cancelJob: () => ipcRenderer.invoke("cancel-job"),
   onUpdateAvailable: (callback) =>
     ipcRenderer.on("update-available", (_e, data) => callback(data)),
+  onUpdateReadyInstall: (callback) =>
+    ipcRenderer.on("update-ready-install", () => callback()),
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
+  installUpdate: () => ipcRenderer.invoke("install-update"),
 });

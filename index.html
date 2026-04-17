@@ -624,11 +624,23 @@
         document.getElementById("version").textContent = `v${window.api.appVersion}`;
       }
 
+      // macOS: link to release page (can't auto-install without signing)
       window.api.onUpdateAvailable(({ version, url }) => {
         document.getElementById("updateBannerText").textContent =
           `v${version} available`;
         const btn = document.getElementById("updateBannerBtn");
+        btn.textContent = "Download";
         btn.onclick = () => window.api.openExternal(url);
+        document.getElementById("updateBanner").classList.add("show");
+      });
+
+      // Windows: update downloaded in background, just needs restart
+      window.api.onUpdateReadyInstall(() => {
+        document.getElementById("updateBannerText").textContent =
+          "Update ready";
+        const btn = document.getElementById("updateBannerBtn");
+        btn.textContent = "Restart";
+        btn.onclick = () => window.api.installUpdate();
         document.getElementById("updateBanner").classList.add("show");
       });
 
