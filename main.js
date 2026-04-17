@@ -70,7 +70,7 @@ function scanForVideos(dirPath) {
       results.push(...scanForVideos(fullPath));
     } else if (VIDEO_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
       const nameNoExt = path.basename(entry.name, path.extname(entry.name));
-      const isOurOutput = /_short-heavy-compress(-\d+)?$|_web(-\d+)?$|_thumb(-\d+)?$/.test(nameNoExt);
+      const isOurOutput = /_short-heavy-compress(-\d+)?$|_web(-\d+)?$|_whatsapp(-\d+)?$|_thumb(-\d+)?$/.test(nameNoExt);
       if (!isOurOutput) results.push(fullPath);
     }
   }
@@ -183,6 +183,92 @@ ipcMain.handle("compress-standard", async (_event, filePath, generateThumb, jobI
   ];
 
   await runFfmpeg(args, duration, jobId);
+  if (generateThumb) await generateThumbnail(output);
+  return output;
+});
+
+// WhatsApp-ready: <90MB output, capped resolution, optional audio
+ipcMain.handle("compress-whatsapp", async (_event, filePath, maxHeight, includeAudio, generateThumb, jobId) => {
+  console.log("[whatsapp] filePath:", filePath, "maxHeight:", maxHeight, "audio:", includeAudio);
+  const dir = path.dirname(filePath);
+  const ext = path.extname(filePath);
+  const base = path.basename(filePath, ext);
+  const output = uniquePath(path.join(dir, `${base}_whatsapp.mp4`));
+
+  const duration = await getVideoDuration(filePath);
+
+  // Decimal-MB budget; WhatsApp's 100MB cap with headroom
+  const targetKbits = 88 * 8000;
+  const audioBitrate = includeAudio ? 128 : 0;
+  const computedVideo = Math.floor(targetKbits / duration) - audioBitrate;
+
+  // Scale-to-fit inside cap, downscale only, even dims for yuv420p
+  const maxW = maxHeight === 720 ? 1280 : 1920;
+  const maxH = maxHeight === 720 ? 720 : 1080;
+  const scaleFilter =
+    `scale='min(${maxW},iw)':'min(${maxH},ih)':force_original_aspect_ratio=decrease,` +
+    `scale=trunc(iw/2)*2:trunc(ih/2)*2`;
+
+  const commonV = [
+    "-c:v", "libx264", "-preset", "slow",
+    "-profile:v", "high", "-level", "4.1",
+    "-pix_fmt", "yuv420p", "-vf", scaleFilter,
+  ];
+  const audioArgs = includeAudio
+    ? ["-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2"]
+    : ["-an"];
+
+  if (computedVideo > 10000) {
+    // Short clip: single-pass CRF, capped bitrate keeps size under budget
+    const args = [
+      "-y", "-i", filePath,
+      "-map", "0:v:0",
+      ...(includeAudio ? ["-map", "0:a:0?"] : []),
+      ...commonV,
+      "-crf", "20",
+      "-maxrate", "10M", "-bufsize", "20M",
+      "-movflags", "+faststart",
+      ...audioArgs,
+      output,
+    ];
+    await runFfmpeg(args, duration, jobId);
+  } else {
+    // Two-pass to hit a precise bitrate target
+    const videoBitrate = Math.max(500, computedVideo);
+    const passLogFile = path.join(dir, `${base}_whatsapp_2pass`);
+
+    const pass1Args = [
+      "-y", "-i", filePath,
+      "-map", "0:v:0",
+      ...commonV,
+      "-b:v", `${videoBitrate}k`,
+      "-pass", "1", "-passlogfile", passLogFile,
+      "-an", "-f", "null",
+      process.platform === "win32" ? "NUL" : "/dev/null",
+    ];
+    await runFfmpeg(pass1Args, duration, jobId);
+
+    const pass2Args = [
+      "-y", "-i", filePath,
+      "-map", "0:v:0",
+      ...(includeAudio ? ["-map", "0:a:0?"] : []),
+      ...commonV,
+      "-b:v", `${videoBitrate}k`,
+      "-pass", "2", "-passlogfile", passLogFile,
+      "-movflags", "+faststart",
+      ...audioArgs,
+      output,
+    ];
+
+    try {
+      await runFfmpeg(pass2Args, duration, jobId);
+    } finally {
+      for (const suffix of ["-0.log", "-0.log.mbtree"]) {
+        try { fs.unlinkSync(passLogFile + suffix); } catch {}
+      }
+    }
+  }
+
   if (generateThumb) await generateThumbnail(output);
   return output;
 });

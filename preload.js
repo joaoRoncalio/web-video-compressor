@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("compress-standard", filePath, generateThumb, jobId),
   compressHeavy: (filePath, maxSeconds, includeAudio, generateThumb, jobId) =>
     ipcRenderer.invoke("compress-heavy", filePath, maxSeconds, includeAudio, generateThumb, jobId),
+  compressWhatsapp: (filePath, maxHeight, includeAudio, generateThumb, jobId) =>
+    ipcRenderer.invoke("compress-whatsapp", filePath, maxHeight, includeAudio, generateThumb, jobId),
   onJobProgress: (callback) =>
     ipcRenderer.on("job-progress", (_event, data) => callback(data)),
   getPathForFile: (file) => webUtils.getPathForFile(file),

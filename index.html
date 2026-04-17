@@ -136,7 +136,7 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 16px;
-        margin-bottom: 28px;
+        margin-bottom: 16px;
       }
 
       .drop-zone {
@@ -316,6 +316,84 @@
       .job.standard {
         border-left-color: #f8f6f0;
       }
+      .job.whatsapp {
+        border-left-color: #28d366;
+      }
+      .job.whatsapp .badge {
+        background: rgba(40, 211, 102, 0.15);
+        color: #28d366;
+      }
+
+      /* WhatsApp Ready strip */
+      .drop-zone.whatsapp {
+        flex-direction: row;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 0;
+        padding: 18px 22px;
+        margin-bottom: 16px;
+        border-color: #1f3a2a;
+        background: #0a0a0a;
+      }
+      .drop-zone.whatsapp:hover,
+      .drop-zone.whatsapp.dragover {
+        border-color: #28d366;
+        background: rgba(40, 211, 102, 0.06);
+      }
+      .drop-zone.whatsapp .wa-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .drop-zone.whatsapp .wa-left svg {
+        display: block;
+        flex-shrink: 0;
+      }
+      .drop-zone.whatsapp .title {
+        color: #28d366;
+        font-size: 13px;
+      }
+      .drop-zone.whatsapp .wa-controls {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .wa-select {
+        font-family: "JetBrains Mono", monospace;
+        background: #0a0a0a;
+        color: #f8f6f0;
+        border: 2px solid #333;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        cursor: pointer;
+      }
+      .wa-select:focus {
+        outline: none;
+        border-color: #28d366;
+      }
+      .wa-audio {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 12px;
+        border: 2px solid #1a1a1a;
+        border-radius: 8px;
+        background: #0f0f0f;
+      }
+      .wa-audio label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #999;
+      }
+      .drop-zone.whatsapp .toggle input:checked + .slider {
+        background: #28d366;
+      }
 
       .job .badge {
         font-size: 10px;
@@ -456,6 +534,34 @@
       </div>
     </div>
 
+    <div
+      class="drop-zone whatsapp"
+      id="zoneWhatsapp"
+      role="button"
+      tabindex="0"
+      aria-label="Drop videos here for WhatsApp-ready compression"
+    >
+      <div class="wa-left">
+        <svg width="22" height="22" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M16.9491 2.89692C15.0843 1.02974 12.6041 0.000947325 9.96159 0C4.51637 0 0.0847856 4.43112 0.0828909 9.87776C0.0819435 11.6189 0.537134 13.3184 1.40157 14.8162L0 19.9355L5.23681 18.5619C6.67958 19.3491 8.30424 19.7636 9.95734 19.7641H9.96159C15.4059 19.7641 19.838 15.3325 19.8398 9.88581C19.8408 7.24612 18.8143 4.76458 16.9491 2.89739V2.89692ZM9.96159 18.0958H9.95828C8.48517 18.0954 7.04006 17.6993 5.77918 16.9514L5.47934 16.7734L2.37163 17.5885L3.20102 14.5585L3.00586 14.2478C2.18406 12.9405 1.74971 11.4295 1.75066 9.87826C1.75255 5.35144 5.43575 1.66824 9.96495 1.66824C12.158 1.66919 14.2194 2.52415 15.7696 4.07634C17.32 5.62807 18.173 7.69136 18.1721 9.88487C18.1702 14.4122 14.487 18.0954 9.96159 18.0954V18.0958ZM14.4652 11.9467C14.2184 11.8231 13.0049 11.2263 12.7785 11.1439C12.5521 11.0614 12.3877 11.0203 12.2233 11.2675C12.059 11.5148 11.5858 12.0708 11.4418 12.2352C11.2978 12.4 11.1538 12.4204 10.907 12.2967C10.6603 12.1731 9.86498 11.9126 8.92192 11.0718C8.18823 10.4172 7.69273 9.60921 7.54879 9.36193C7.40478 9.1147 7.53363 8.98111 7.65675 8.85843C7.76757 8.74761 7.90353 8.56999 8.02715 8.42598C8.15081 8.28198 8.19154 8.17875 8.27393 8.01436C8.35638 7.84952 8.31515 7.70557 8.2536 7.58191C8.19198 7.45829 7.69847 6.24332 7.49241 5.74931C7.29202 5.26808 7.08839 5.33345 6.93728 5.32539C6.79327 5.31828 6.62893 5.31687 6.4641 5.31687C6.29926 5.31687 6.03208 5.37844 5.80569 5.6257C5.57929 5.87292 4.94172 6.47021 4.94172 7.68469C4.94172 8.89916 5.82608 10.0734 5.94969 10.2382C6.07331 10.4031 7.69036 12.896 10.1662 13.9655C10.755 14.2198 11.2149 14.3719 11.5735 14.4856C12.1646 14.6736 12.7027 14.6471 13.128 14.5836C13.6022 14.5126 14.5883 13.9863 14.7939 13.4099C14.9995 12.8334 14.9995 12.3389 14.9379 12.2361C14.8764 12.1333 14.7115 12.0713 14.4647 11.9477L14.4652 11.9467Z" fill="#28D366"/>
+        </svg>
+        <div class="title">WhatsApp Ready</div>
+      </div>
+      <div class="wa-controls" onclick="event.stopPropagation()">
+        <select id="whatsappRes" class="wa-select" aria-label="Max resolution">
+          <option value="1080">1080p</option>
+          <option value="720">720p</option>
+        </select>
+        <div class="wa-audio">
+          <label for="whatsappAudio">Audio</label>
+          <label class="toggle">
+            <input type="checkbox" id="whatsappAudio" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
     <div class="queue-section">
       <div class="queue-header">
         <h2>Queue</h2>
@@ -537,6 +643,7 @@
 
       setupZone(document.getElementById("zoneHeavy"), "heavy");
       setupZone(document.getElementById("zoneStandard"), "standard");
+      setupZone(document.getElementById("zoneWhatsapp"), "whatsapp");
 
       function addJob(filePath, fileName, type) {
         const jobId = ++jobCounter;
@@ -554,7 +661,12 @@
           div.setAttribute("data-job-id", job.id);
           div.setAttribute("role", "listitem");
 
-          const badge = job.type === "heavy" ? "Heavy" : "Standard";
+          const badge =
+            job.type === "heavy"
+              ? "Heavy"
+              : job.type === "whatsapp"
+                ? "WhatsApp"
+                : "Standard";
           let statusText = "Waiting...";
           let statusClass = "";
           if (job.status === "processing") {
@@ -627,6 +739,18 @@
               maxSec,
               includeAudio,
               genThumb,
+              job.id,
+            );
+          } else if (job.type === "whatsapp") {
+            const maxHeight =
+              parseInt(document.getElementById("whatsappRes").value) || 1080;
+            const includeAudio =
+              document.getElementById("whatsappAudio").checked;
+            await window.api.compressWhatsapp(
+              job.filePath,
+              maxHeight,
+              includeAudio,
+              false,
               job.id,
             );
           } else {
