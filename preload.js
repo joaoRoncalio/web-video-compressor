@@ -16,4 +16,7 @@ contextBridge.exposeInMainWorld("api", {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   scanPath: (filePath) => ipcRenderer.invoke("scan-path", filePath),
   cancelJob: () => ipcRenderer.invoke("cancel-job"),
+  onUpdateAvailable: (callback) =>
+    ipcRenderer.on("update-available", (_e, data) => callback(data)),
+  openExternal: (url) => ipcRenderer.invoke("open-external", url),
 });

@@ -463,10 +463,50 @@
         background: #4caf50;
         width: 100%;
       }
+
+      /* Update banner */
+      .update-banner {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        display: none;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        background: #0f1f12;
+        border: 2px solid #28d366;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #28d366;
+        z-index: 100;
+      }
+      .update-banner.show {
+        display: flex;
+      }
+      .update-banner button {
+        font-family: "JetBrains Mono", monospace;
+        background: #28d366;
+        color: #04140a;
+        border: none;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
     <div class="version" id="version"></div>
+    <div class="update-banner" id="updateBanner">
+      <span id="updateBannerText">New version available</span>
+      <button id="updateBannerBtn">Download</button>
+    </div>
     <h1>CompressorFiore</h1>
 
     <div class="zones">
@@ -583,6 +623,14 @@
       if (window.api?.appVersion) {
         document.getElementById("version").textContent = `v${window.api.appVersion}`;
       }
+
+      window.api.onUpdateAvailable(({ version, url }) => {
+        document.getElementById("updateBannerText").textContent =
+          `v${version} available`;
+        const btn = document.getElementById("updateBannerBtn");
+        btn.onclick = () => window.api.openExternal(url);
+        document.getElementById("updateBanner").classList.add("show");
+      });
 
       // Listen for progress updates from main process
       window.api.onJobProgress(({ jobId, progress }) => {

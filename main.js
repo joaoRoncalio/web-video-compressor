@@ -1,10 +1,17 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { execFile, spawn } = require("child_process");
+const { autoUpdater } = require("electron-updater");
 
-const FFMPEG = "/opt/homebrew/bin/ffmpeg";
-const FFPROBE = "/opt/homebrew/bin/ffprobe";
+// ffmpeg-static / ffprobe-static ship platform binaries. When packaged with
+// asar, the path points inside app.asar — but binaries must live unpacked to
+// be executable, so swap to app.asar.unpacked.
+const resolveBinary = (modPath) =>
+  modPath.replace("app.asar" + path.sep, "app.asar.unpacked" + path.sep);
+
+const FFMPEG = resolveBinary(require("ffmpeg-static"));
+const FFPROBE = resolveBinary(require("ffprobe-static").path);
 
 let mainWindow;
 let currentProc = null;
@@ -23,7 +30,23 @@ app.whenReady().then(() => {
     },
   });
   mainWindow.loadFile("index.html");
+
+  // Update check only — app isn't code-signed, so we can't auto-install
+  // on macOS. Notify the user and link them to the release page instead.
+  if (app.isPackaged) {
+    autoUpdater.autoDownload = false;
+    autoUpdater.on("update-available", (info) => {
+      mainWindow?.webContents.send("update-available", {
+        version: info.version,
+        url: `https://github.com/joaoRoncalio/web-video-compressor/releases/latest`,
+      });
+    });
+    autoUpdater.on("error", (err) => console.error("[updater]", err));
+    autoUpdater.checkForUpdates().catch(() => {});
+  }
 });
+
+ipcMain.handle("open-external", (_e, url) => shell.openExternal(url));
 
 app.on("window-all-closed", () => app.quit());
 
