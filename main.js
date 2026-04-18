@@ -13,6 +13,96 @@ const resolveBinary = (modPath) =>
 const FFMPEG = resolveBinary(require("ffmpeg-static"));
 const FFPROBE = resolveBinary(require("ffprobe-static").path);
 
+let encoderCache = null;
+
+function listFfmpegEncoders() {
+  return new Promise((resolve) => {
+    execFile(FFMPEG, ["-hide_banner", "-encoders"], (err, stdout) => {
+      if (err) return resolve(new Set());
+      const names = new Set();
+      for (const line of stdout.split("\n")) {
+        const m = line.match(/^\s*[VAS][.A-Z]+\s+(\S+)/);
+        if (m) names.add(m[1]);
+      }
+      resolve(names);
+    });
+  });
+}
+
+async function pickEncoder() {
+  if (encoderCache) return encoderCache;
+  const preferred =
+    process.platform === "darwin" ? ["h264_videotoolbox"] :
+    process.platform === "win32"  ? ["h264_nvenc", "h264_qsv", "h264_amf"] :
+    [];
+  const available = await listFfmpegEncoders();
+  encoderCache = preferred.find((e) => available.has(e)) ?? "libx264";
+  console.log("[encoder] selected:", encoderCache);
+  return encoderCache;
+}
+
+async function withEncoderFallback(run) {
+  const first = await pickEncoder();
+  try {
+    return await run(first);
+  } catch (err) {
+    if (String(err.message).includes("CANCELLED")) throw err;
+    if (first === "libx264") throw err;
+    console.warn("[encoder]", first, "failed, falling back to libx264:", err.message);
+    encoderCache = "libx264";
+    return await run("libx264");
+  }
+}
+
+// Common video codec flags (profile, pixel format) + preset per encoder.
+function videoCodecArgs(encoder) {
+  const common = ["-profile:v", "high", "-level", "4.1", "-pix_fmt", "yuv420p"];
+  switch (encoder) {
+    case "h264_videotoolbox":
+      return ["-c:v", "h264_videotoolbox", "-allow_sw", "1", ...common];
+    case "h264_nvenc":
+      return ["-c:v", "h264_nvenc", "-preset", "p5", ...common];
+    case "h264_qsv":
+      return ["-c:v", "h264_qsv", "-preset", "slower", ...common];
+    case "h264_amf":
+      return ["-c:v", "h264_amf", "-quality", "quality", ...common];
+    default:
+      return ["-c:v", "libx264", "-preset", "slow", ...common];
+  }
+}
+
+// Quality-based rate control (maps libx264 CRF to each encoder's native knob).
+function qualityArgs(encoder, crf) {
+  switch (encoder) {
+    case "h264_videotoolbox":
+      // VT -q:v is 0-100, higher = better. crf 24 ~ q 60.
+      return ["-q:v", "60", "-b:v", "0"];
+    case "h264_nvenc":
+      return ["-rc", "vbr", "-cq", String(crf), "-b:v", "0"];
+    case "h264_qsv":
+      return ["-global_quality", String(crf)];
+    case "h264_amf":
+      return ["-rc", "cqp", "-qp_i", String(crf), "-qp_p", String(crf)];
+    default:
+      return ["-crf", String(crf)];
+  }
+}
+
+// Bitrate-capped VBR for size-targeted modes (single pass, for any encoder).
+function cappedBitrateArgs(encoder, kbps) {
+  const maxrate = Math.round(kbps * 1.3);
+  const bufsize = kbps * 2;
+  const common = ["-b:v", `${kbps}k`, "-maxrate", `${maxrate}k`, "-bufsize", `${bufsize}k`];
+  switch (encoder) {
+    case "h264_nvenc":
+      return ["-rc", "vbr", ...common];
+    case "h264_amf":
+      return ["-rc", "vbr_peak", ...common];
+    default:
+      return common;
+  }
+}
+
 let mainWindow;
 let currentProc = null;
 let cancelRequested = false;
@@ -57,6 +147,10 @@ app.whenReady().then(() => {
 
 ipcMain.handle("open-external", (_e, url) => shell.openExternal(url));
 ipcMain.handle("install-update", () => autoUpdater.quitAndInstall());
+ipcMain.handle("reveal-in-folder", (_e, filePath) => {
+  if (filePath && fs.existsSync(filePath)) shell.showItemInFolder(filePath);
+});
+ipcMain.handle("get-encoder", () => pickEncoder());
 
 app.on("window-all-closed", () => app.quit());
 
@@ -203,19 +297,20 @@ ipcMain.handle("compress-standard", async (_event, filePath, generateThumb, jobI
 
   const duration = await getVideoDuration(filePath);
 
-  const args = [
-    "-y", "-i", filePath,
-    "-map", "0:v:0", "-map", "0:a:0?",
-    "-c:v", "libx264", "-crf", "24", "-preset", "slow",
-    "-profile:v", "high", "-level", "4.1",
-    "-pix_fmt", "yuv420p",
-    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
-    "-movflags", "+faststart",
-    "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2",
-    output,
-  ];
+  await withEncoderFallback(async (encoder) => {
+    const args = [
+      "-y", "-i", filePath,
+      "-map", "0:v:0", "-map", "0:a:0?",
+      ...videoCodecArgs(encoder),
+      ...qualityArgs(encoder, 24),
+      "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+      "-movflags", "+faststart",
+      "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2",
+      output,
+    ];
+    await runFfmpeg(args, duration, jobId);
+  });
 
-  await runFfmpeg(args, duration, jobId);
   if (generateThumb) await generateThumbnail(output);
   return output;
 });
@@ -242,65 +337,77 @@ ipcMain.handle("compress-whatsapp", async (_event, filePath, maxHeight, includeA
     `scale='min(${maxW},iw)':'min(${maxH},ih)':force_original_aspect_ratio=decrease,` +
     `scale=trunc(iw/2)*2:trunc(ih/2)*2`;
 
-  const commonV = [
-    "-c:v", "libx264", "-preset", "slow",
-    "-profile:v", "high", "-level", "4.1",
-    "-pix_fmt", "yuv420p", "-vf", scaleFilter,
-  ];
   const audioArgs = includeAudio
     ? ["-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2"]
     : ["-an"];
 
-  if (computedVideo > 10000) {
-    // Short clip: single-pass CRF, capped bitrate keeps size under budget
-    const args = [
-      "-y", "-i", filePath,
-      "-map", "0:v:0",
-      ...(includeAudio ? ["-map", "0:a:0?"] : []),
-      ...commonV,
-      "-crf", "20",
-      "-maxrate", "10M", "-bufsize", "20M",
-      "-movflags", "+faststart",
-      ...audioArgs,
-      output,
-    ];
-    await runFfmpeg(args, duration, jobId);
-  } else {
-    // Two-pass to hit a precise bitrate target
-    const videoBitrate = Math.max(500, computedVideo);
-    const passLogFile = path.join(dir, `${base}_whatsapp_2pass`);
+  await withEncoderFallback(async (encoder) => {
+    const commonV = [...videoCodecArgs(encoder), "-vf", scaleFilter];
 
-    const pass1Args = [
-      "-y", "-i", filePath,
-      "-map", "0:v:0",
-      ...commonV,
-      "-b:v", `${videoBitrate}k`,
-      "-pass", "1", "-passlogfile", passLogFile,
-      "-an", "-f", "null",
-      process.platform === "win32" ? "NUL" : "/dev/null",
-    ];
-    await runFfmpeg(pass1Args, duration, jobId);
+    // GPU: always single-pass VBR capped at the computed bitrate budget.
+    // libx264: short clips use CRF+maxrate, longer clips use 2-pass for precision.
+    if (encoder !== "libx264") {
+      const videoBitrate = Math.max(500, computedVideo);
+      const args = [
+        "-y", "-i", filePath,
+        "-map", "0:v:0",
+        ...(includeAudio ? ["-map", "0:a:0?"] : []),
+        ...commonV,
+        ...cappedBitrateArgs(encoder, videoBitrate),
+        "-movflags", "+faststart",
+        ...audioArgs,
+        output,
+      ];
+      await runFfmpeg(args, duration, jobId);
+    } else if (computedVideo > 10000) {
+      const args = [
+        "-y", "-i", filePath,
+        "-map", "0:v:0",
+        ...(includeAudio ? ["-map", "0:a:0?"] : []),
+        ...commonV,
+        "-crf", "20",
+        "-maxrate", "10M", "-bufsize", "20M",
+        "-movflags", "+faststart",
+        ...audioArgs,
+        output,
+      ];
+      await runFfmpeg(args, duration, jobId);
+    } else {
+      const videoBitrate = Math.max(500, computedVideo);
+      const passLogFile = path.join(dir, `${base}_whatsapp_2pass`);
 
-    const pass2Args = [
-      "-y", "-i", filePath,
-      "-map", "0:v:0",
-      ...(includeAudio ? ["-map", "0:a:0?"] : []),
-      ...commonV,
-      "-b:v", `${videoBitrate}k`,
-      "-pass", "2", "-passlogfile", passLogFile,
-      "-movflags", "+faststart",
-      ...audioArgs,
-      output,
-    ];
+      const pass1Args = [
+        "-y", "-i", filePath,
+        "-map", "0:v:0",
+        ...commonV,
+        "-b:v", `${videoBitrate}k`,
+        "-pass", "1", "-passlogfile", passLogFile,
+        "-an", "-f", "null",
+        process.platform === "win32" ? "NUL" : "/dev/null",
+      ];
+      await runFfmpeg(pass1Args, duration, jobId);
 
-    try {
-      await runFfmpeg(pass2Args, duration, jobId);
-    } finally {
-      for (const suffix of ["-0.log", "-0.log.mbtree"]) {
-        try { fs.unlinkSync(passLogFile + suffix); } catch {}
+      const pass2Args = [
+        "-y", "-i", filePath,
+        "-map", "0:v:0",
+        ...(includeAudio ? ["-map", "0:a:0?"] : []),
+        ...commonV,
+        "-b:v", `${videoBitrate}k`,
+        "-pass", "2", "-passlogfile", passLogFile,
+        "-movflags", "+faststart",
+        ...audioArgs,
+        output,
+      ];
+
+      try {
+        await runFfmpeg(pass2Args, duration, jobId);
+      } finally {
+        for (const suffix of ["-0.log", "-0.log.mbtree"]) {
+          try { fs.unlinkSync(passLogFile + suffix); } catch {}
+        }
       }
     }
-  }
+  });
 
   if (generateThumb) await generateThumbnail(output);
   return output;
@@ -325,56 +432,67 @@ ipcMain.handle("compress-heavy", async (_event, filePath, maxSeconds, includeAud
   // Ensure minimum video bitrate
   const finalVideoBitrate = Math.max(100, videoBitrate);
 
-  // Two-pass encoding for best quality at target size
-  const passLogFile = path.join(dir, `${base}_2pass`);
+  const scaleFilter = "scale=trunc(iw/2)*2:trunc(ih/2)*2";
+  const audioArgs = includeAudio
+    ? ["-c:a", "aac", "-b:a", `${audioBitrate}k`, "-ar", "48000", "-ac", "2"]
+    : ["-an"];
 
-  // Pass 1
-  const pass1Args = [
-    "-y", "-i", filePath,
-    "-t", String(clipDuration),
-    "-map", "0:v:0",
-    "-c:v", "libx264", "-b:v", `${finalVideoBitrate}k`,
-    "-preset", "slow", "-pass", "1",
-    "-passlogfile", passLogFile,
-    "-profile:v", "high", "-level", "4.1",
-    "-pix_fmt", "yuv420p",
-    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
-    "-an", "-f", "null",
-    process.platform === "win32" ? "NUL" : "/dev/null",
-  ];
+  await withEncoderFallback(async (encoder) => {
+    const commonV = [...videoCodecArgs(encoder), "-vf", scaleFilter];
 
-  await runFfmpeg(pass1Args, clipDuration, jobId);
+    if (encoder !== "libx264") {
+      // GPU: single-pass VBR capped. Slightly looser size accuracy, much faster.
+      const args = [
+        "-y", "-i", filePath,
+        "-t", String(clipDuration),
+        "-map", "0:v:0",
+        ...(includeAudio ? ["-map", "0:a:0?"] : []),
+        ...commonV,
+        ...cappedBitrateArgs(encoder, finalVideoBitrate),
+        "-movflags", "+faststart",
+        ...audioArgs,
+        output,
+      ];
+      await runFfmpeg(args, clipDuration, jobId);
+      return;
+    }
 
-  // Pass 2
-  const pass2Args = [
-    "-y", "-i", filePath,
-    "-t", String(clipDuration),
-    "-map", "0:v:0",
-    ...(includeAudio ? ["-map", "0:a:0?"] : []),
-    "-c:v", "libx264", "-b:v", `${finalVideoBitrate}k`,
-    "-preset", "slow", "-pass", "2",
-    "-passlogfile", passLogFile,
-    "-profile:v", "high", "-level", "4.1",
-    "-pix_fmt", "yuv420p",
-    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
-    "-movflags", "+faststart",
-  ];
+    // libx264 two-pass
+    const passLogFile = path.join(dir, `${base}_2pass`);
 
-  if (includeAudio) {
-    pass2Args.push("-c:a", "aac", "-b:a", `${audioBitrate}k`, "-ar", "48000", "-ac", "2");
-  } else {
-    pass2Args.push("-an");
-  }
+    const pass1Args = [
+      "-y", "-i", filePath,
+      "-t", String(clipDuration),
+      "-map", "0:v:0",
+      ...commonV,
+      "-b:v", `${finalVideoBitrate}k`,
+      "-pass", "1", "-passlogfile", passLogFile,
+      "-an", "-f", "null",
+      process.platform === "win32" ? "NUL" : "/dev/null",
+    ];
+    await runFfmpeg(pass1Args, clipDuration, jobId);
 
-  pass2Args.push(output);
+    const pass2Args = [
+      "-y", "-i", filePath,
+      "-t", String(clipDuration),
+      "-map", "0:v:0",
+      ...(includeAudio ? ["-map", "0:a:0?"] : []),
+      ...commonV,
+      "-b:v", `${finalVideoBitrate}k`,
+      "-pass", "2", "-passlogfile", passLogFile,
+      "-movflags", "+faststart",
+      ...audioArgs,
+      output,
+    ];
 
-  await runFfmpeg(pass2Args, clipDuration, jobId);
-
-  // Clean up pass log files
-  for (const suffix of ["-0.log", "-0.log.mbtree"]) {
-    const logFile = passLogFile + suffix;
-    try { fs.unlinkSync(logFile); } catch {}
-  }
+    try {
+      await runFfmpeg(pass2Args, clipDuration, jobId);
+    } finally {
+      for (const suffix of ["-0.log", "-0.log.mbtree"]) {
+        try { fs.unlinkSync(passLogFile + suffix); } catch {}
+      }
+    }
+  });
 
   if (generateThumb) await generateThumbnail(output);
   return output;

@@ -22,4 +22,7 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.on("update-ready-install", () => callback()),
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
   installUpdate: () => ipcRenderer.invoke("install-update"),
+  revealInFolder: (filePath) => ipcRenderer.invoke("reveal-in-folder", filePath),
+  getEncoder: () => ipcRenderer.invoke("get-encoder"),
+  platform: process.platform,
 });
