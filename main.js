@@ -41,22 +41,75 @@ async function pickEncoder() {
   return encoderCache;
 }
 
-async function withEncoderFallback(run) {
-  const first = await pickEncoder();
-  try {
-    return await run(first);
-  } catch (err) {
-    if (String(err.message).includes("CANCELLED")) throw err;
-    if (first === "libx264") throw err;
-    console.warn("[encoder]", first, "failed, falling back to libx264:", err.message);
-    encoderCache = "libx264";
-    return await run("libx264");
+// Tiered pipeline fallback: attempt full-GPU (hw decode + hw filter + hw
+// encode), fall back to decode-only hwaccel, then CPU. `allowFullGpu` is opt-in
+// per handler — complex filter graphs (aspect-ratio fits, etc.) skip tier 1
+// because hw scale filters don't cover all expressions uniformly.
+async function withPipelineFallback(run, { allowFullGpu = false } = {}) {
+  const encoder = await pickEncoder();
+  if (encoder === "libx264") return run({ encoder: "libx264", tier: "cpu" });
+
+  const tiers = [];
+  if (allowFullGpu) tiers.push("full-gpu");
+  tiers.push("decode-hwaccel", "cpu");
+
+  let lastErr;
+  for (const tier of tiers) {
+    const activeEncoder = tier === "cpu" ? "libx264" : encoder;
+    try {
+      return await run({ encoder: activeEncoder, tier });
+    } catch (err) {
+      if (String(err.message).includes("CANCELLED")) throw err;
+      console.warn(`[pipeline] ${tier} (${activeEncoder}) failed:`, String(err.message).slice(0, 300));
+      lastErr = err;
+      if (tier === "cpu") throw err;
+    }
+  }
+  throw lastErr;
+}
+
+// Decoder-side flags (go BEFORE -i). Full-GPU keeps frames in VRAM so hw
+// filters/encoder can consume them directly; decode-hwaccel just accelerates
+// decode and lets ffmpeg copy back to CPU for sw filters.
+function inputAccelArgs(encoder, tier) {
+  if (tier === "cpu") return [];
+  if (tier === "decode-hwaccel") {
+    switch (encoder) {
+      case "h264_videotoolbox": return ["-hwaccel", "videotoolbox"];
+      case "h264_nvenc":        return ["-hwaccel", "cuda"];
+      case "h264_qsv":          return ["-hwaccel", "qsv"];
+      case "h264_amf":          return ["-hwaccel", "d3d11va"];
+      default: return [];
+    }
+  }
+  // full-gpu
+  switch (encoder) {
+    case "h264_videotoolbox": return ["-hwaccel", "videotoolbox", "-hwaccel_output_format", "videotoolbox"];
+    case "h264_nvenc":        return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"];
+    case "h264_qsv":          return ["-hwaccel", "qsv", "-hwaccel_output_format", "qsv"];
+    case "h264_amf":          return ["-hwaccel", "d3d11va"]; // AMF has no clean hw filter path
+    default: return [];
+  }
+}
+
+// Hardware-side equivalent of "scale=trunc(iw/2)*2:trunc(ih/2)*2" for full-GPU.
+// Returns the sw filter string for non-hw tiers.
+function evenDimsScaleFilter(encoder, tier) {
+  if (tier !== "full-gpu") return "scale=trunc(iw/2)*2:trunc(ih/2)*2";
+  switch (encoder) {
+    case "h264_videotoolbox": return "scale_vt=w=trunc(iw/2)*2:h=trunc(ih/2)*2";
+    case "h264_nvenc":        return "scale_cuda=w=trunc(iw/2)*2:h=trunc(ih/2)*2";
+    case "h264_qsv":          return "scale_qsv=w=trunc(iw/2)*2:h=trunc(ih/2)*2";
+    default:                  return "scale=trunc(iw/2)*2:trunc(ih/2)*2";
   }
 }
 
 // Common video codec flags (profile, pixel format) + preset per encoder.
-function videoCodecArgs(encoder) {
-  const common = ["-profile:v", "high", "-level", "4.1", "-pix_fmt", "yuv420p"];
+// In full-GPU the frames are already in a hw format the encoder accepts
+// natively; forcing -pix_fmt yuv420p there breaks the hw chain.
+function videoCodecArgs(encoder, tier = "cpu") {
+  const pixFmt = tier === "full-gpu" ? [] : ["-pix_fmt", "yuv420p"];
+  const common = ["-profile:v", "high", "-level", "4.1", ...pixFmt];
   switch (encoder) {
     case "h264_videotoolbox":
       return ["-c:v", "h264_videotoolbox", "-allow_sw", "1", ...common];
@@ -297,19 +350,21 @@ ipcMain.handle("compress-standard", async (_event, filePath, generateThumb, jobI
 
   const duration = await getVideoDuration(filePath);
 
-  await withEncoderFallback(async (encoder) => {
+  await withPipelineFallback(async ({ encoder, tier }) => {
     const args = [
-      "-y", "-i", filePath,
+      "-y",
+      ...inputAccelArgs(encoder, tier),
+      "-i", filePath,
       "-map", "0:v:0", "-map", "0:a:0?",
-      ...videoCodecArgs(encoder),
+      ...videoCodecArgs(encoder, tier),
       ...qualityArgs(encoder, 24),
-      "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+      "-vf", evenDimsScaleFilter(encoder, tier),
       "-movflags", "+faststart",
       "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2",
       output,
     ];
     await runFfmpeg(args, duration, jobId);
-  });
+  }, { allowFullGpu: true });
 
   if (generateThumb) await generateThumbnail(output);
   return output;
@@ -341,15 +396,16 @@ ipcMain.handle("compress-whatsapp", async (_event, filePath, maxHeight, includeA
     ? ["-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2"]
     : ["-an"];
 
-  await withEncoderFallback(async (encoder) => {
-    const commonV = [...videoCodecArgs(encoder), "-vf", scaleFilter];
+  await withPipelineFallback(async ({ encoder, tier }) => {
+    const accel = inputAccelArgs(encoder, tier);
+    const commonV = [...videoCodecArgs(encoder, tier), "-vf", scaleFilter];
 
     // GPU: always single-pass VBR capped at the computed bitrate budget.
     // libx264: short clips use CRF+maxrate, longer clips use 2-pass for precision.
     if (encoder !== "libx264") {
       const videoBitrate = Math.max(500, computedVideo);
       const args = [
-        "-y", "-i", filePath,
+        "-y", ...accel, "-i", filePath,
         "-map", "0:v:0",
         ...(includeAudio ? ["-map", "0:a:0?"] : []),
         ...commonV,
@@ -437,13 +493,14 @@ ipcMain.handle("compress-heavy", async (_event, filePath, maxSeconds, includeAud
     ? ["-c:a", "aac", "-b:a", `${audioBitrate}k`, "-ar", "48000", "-ac", "2"]
     : ["-an"];
 
-  await withEncoderFallback(async (encoder) => {
-    const commonV = [...videoCodecArgs(encoder), "-vf", scaleFilter];
+  await withPipelineFallback(async ({ encoder, tier }) => {
+    const accel = inputAccelArgs(encoder, tier);
+    const commonV = [...videoCodecArgs(encoder, tier), "-vf", scaleFilter];
 
     if (encoder !== "libx264") {
       // GPU: single-pass VBR capped. Slightly looser size accuracy, much faster.
       const args = [
-        "-y", "-i", filePath,
+        "-y", ...accel, "-i", filePath,
         "-t", String(clipDuration),
         "-map", "0:v:0",
         ...(includeAudio ? ["-map", "0:a:0?"] : []),
