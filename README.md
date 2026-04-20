@@ -1,57 +1,59 @@
+[![pt-BR](https://img.shields.io/badge/lang-pt--BR-green)](README.pt-BR.md)
+
+[![CompressorFiore Screenshot](/assets/prints.jpg)]
+
 # CompressorFiore
 
-App desktop pra comprimir vídeo rápido, sem complicação. Wrapper de ffmpeg em Electron.
+Desktop app to compress video fast, no fuss. An ffmpeg wrapper built with Electron.
 
-## Modos
+## Modes
 
-- **Heavy Compress** — corta + esmaga pra caber em 2MB. Bom pra preview/Slack.
-- **Standard Compress** — H.264 CRF 24, AAC 128k. Otimizado pra web.
-- **WhatsApp Ready** — fica abaixo de 90MB, máx 1080p ou 720p, áudio opcional.
+- **Heavy Compress** — cuts + crushes to fit within 2MB. Great for previews/Slack.
+- **Standard Compress** — H.264 CRF 24, AAC 128k. Optimized for web.
+- **WhatsApp Ready** — stays under 90MB, max 1080p or 720p, optional audio.
 
-Aceita arquivos ou pastas (varre recursivo). Fila processa um por vez.
+Accepts files or folders (recursive scan). Queue processes one at a time.
 
-## Instalar
+## Install
 
-Baixar o instalador mais recente em [Releases](https://github.com/joaoRoncalio/web-video-compressor/releases/latest).
+Download the latest installer from [Releases](https://github.com/joaoRoncalio/web-video-compressor/releases/latest).
 
 ### macOS (Apple Silicon)
 
-1. Abre o `.dmg`, arrasta o **CompressorFiore** pra `/Applications`.
-2. Ao abrir pela primeira vez o macOS vai dizer **"CompressorFiore está danificado e não pode ser aberto"**. É mentira — o app não está assinado com Developer ID da Apple, e o Gatekeeper bloqueia tudo que foi baixado da internet sem assinatura. Pra liberar, abre o Terminal e roda:
+1. Open the `.dmg` and drag **CompressorFiore** to `/Applications`.
+2. On first launch macOS will say **"CompressorFiore is damaged and can't be opened"**. It's not — the app isn't signed with an Apple Developer ID, and Gatekeeper blocks anything downloaded from the internet without a signature. To allow it, open Terminal and run:
 
    ```bash
    xattr -cr /Applications/CompressorFiore.app
    ```
 
-3. Abre normal daí pra frente. Só precisa fazer isso uma vez.
-
 ### Windows (x64)
 
-1. Rodar o `CompressorFiore Setup x.x.x.exe`.
-2. Na primeira instalação o SmartScreen pode avisar "Windows protegeu seu PC" → **Mais informações** → **Executar assim mesmo**.
-3. Aplicativos subsequentes de update instalam sozinhos sem aviso.
+1. Run `CompressorFiore Setup x.x.x.exe`.
+2. On first install SmartScreen may warn "Windows protected your PC" → **More info** → **Run anyway**.
+3. Subsequent update installers run silently without any warning.
 
 ## Updates
 
-O app checa releases novos no GitHub quando abre.
+The app checks for new GitHub releases on launch.
 
-- **Windows:** baixa em background e mostra botão **Restart** pra instalar.
-- **macOS:** mostra botão **Download** que abre a release no navegador (não dá pra auto-instalar sem Developer ID).
+- **Windows:** downloads in the background and shows a **Restart** button to install.
+- **macOS:** shows a **Download** button that opens the release in your browser (auto-install isn't possible without a Developer ID).
 
-## Rodar em dev
+## Run in dev
 
 ```bash
 npm install
 npm start
 ```
 
-## Build local
+## Local build
 
 ```bash
 npm run build
 ```
 
-Sai um `.dmg` em `dist/` (só Mac). Releases oficiais Mac + Windows são buildados via GitHub Actions — push uma tag `v*` e o workflow cuida do resto.
+Outputs a `.dmg` to `dist/` (Mac only). Official Mac + Windows releases are built via GitHub Actions — push a `v*` tag and the workflow handles the rest.
 
 ## Stack
 
