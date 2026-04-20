@@ -68,7 +68,7 @@
     "publish": {
       "provider": "github",
       "owner": "joaoRoncalio",
-      "repo": "web-video-compressor"
+      "repo": "compressorfiore"
     }
   }
 }

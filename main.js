@@ -190,7 +190,7 @@ app.whenReady().then(() => {
       autoUpdater.on("update-available", (info) => {
         mainWindow?.webContents.send("update-available", {
           version: info.version,
-          url: "https://github.com/joaoRoncalio/web-video-compressor/releases/latest",
+          url: "https://github.com/joaoRoncalio/compressorfiore/releases/latest",
         });
       });
       autoUpdater.checkForUpdates().catch(() => {});
