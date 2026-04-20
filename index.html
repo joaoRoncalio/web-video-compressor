@@ -55,6 +55,45 @@
         color: #4a6a3a;
       }
 
+      .lang-toggle {
+        position: fixed;
+        bottom: 10px;
+        left: 12px;
+        display: flex;
+        gap: 6px;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        z-index: 50;
+      }
+
+      .lang-toggle button {
+        font-family: "JetBrains Mono", monospace;
+        background: none;
+        border: none;
+        color: #3a3a3a;
+        cursor: pointer;
+        padding: 2px 4px;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        transition: color 0.15s;
+      }
+
+      .lang-toggle button:hover {
+        color: #888;
+      }
+
+      .lang-toggle button.active {
+        color: #f8f6f0;
+      }
+
+      .lang-toggle .sep {
+        color: #2a2a2a;
+      }
+
       .header-title {
         display: flex;
         flex-direction: column;
@@ -74,7 +113,7 @@
 
       .header-subheading {
         font-size: 0.75rem;
-        color: #333;
+        color: #666;
         font-weight: 600;
       }
 
@@ -280,7 +319,10 @@
       }
 
       .queue:empty::after {
-        content: "No jobs in queue. Drop videos above to start.";
+        content: var(
+          --queue-empty,
+          "No jobs in queue. Drag'n'Drop Videos or Folders above to start."
+        );
         color: #333;
         font-size: 12px;
         font-weight: 600;
@@ -534,14 +576,21 @@
   <body>
     <div class="version" id="version"></div>
     <div class="encoder-badge" id="encoderBadge"></div>
+    <div class="lang-toggle" role="group" aria-label="Language">
+      <button type="button" data-lang="en">EN</button>
+      <span class="sep">·</span>
+      <button type="button" data-lang="pt-BR">PT-BR</button>
+    </div>
     <div class="update-banner" id="updateBanner">
-      <span id="updateBannerText">New version available</span>
-      <button id="updateBannerBtn">Download</button>
+      <span id="updateBannerText" data-i18n="update.available"
+        >New version available</span
+      >
+      <button id="updateBannerBtn" data-i18n="update.download">Download</button>
     </div>
     <div class="header-title">
       <h1>CompressorFiore</h1>
-      <span class="header-subheading"
-        >Drop in files or folders in the zones to get started.</span
+      <span class="header-subheading" data-i18n="header.subheading"
+        >Drag'n'Drop Videos or Folders in any area below to get started.</span
       >
     </div>
 
@@ -551,16 +600,19 @@
         id="zoneStandard"
         role="button"
         tabindex="0"
+        data-i18n-attr="aria-label:zone.standard.aria"
         aria-label="Drop videos here for standard web compression"
       >
         <div class="icon">&#x1F4E6;</div>
-        <div class="title">Standard Compression</div>
-        <div class="desc">
-          Web-optimized (x264 CRF 24, AAC 128k). Drop files or folders.
+        <div class="title" data-i18n="zone.standard.title">
+          Standard Compression
+        </div>
+        <div class="desc" data-i18n="zone.standard.desc" data-i18n-html="1">
+          Web-optimized. <br />Drag'n'Drop Videos or Folders.
         </div>
         <div class="zone-settings" onclick="event.stopPropagation()">
           <div class="zone-setting">
-            <label for="standardThumb">Thumb</label>
+            <label for="standardThumb" data-i18n="setting.thumb">Thumb</label>
             <label class="toggle">
               <input type="checkbox" id="standardThumb" />
               <span class="slider"></span>
@@ -573,34 +625,37 @@
         id="zoneHeavy"
         role="button"
         tabindex="0"
+        data-i18n-attr="aria-label:zone.heavy.aria"
         aria-label="Drop videos here for heavy compression"
       >
         <div class="icon">&#x1F525;</div>
-        <div class="title">Heavy Compression</div>
-        <div class="desc">
-          Trim + squeeze to 2MB max.<br />
-          Drop files or folders.
+        <div class="title" data-i18n="zone.heavy.title">
+          Heavy Compression [2MB Max]
+        </div>
+        <div class="desc" data-i18n="zone.heavy.desc">
+          Drag'n'Drop Videos or Folders.
         </div>
         <div class="zone-settings" onclick="event.stopPropagation()">
           <div class="zone-setting">
-            <label for="maxDuration">Clip</label>
+            <label for="maxDuration" data-i18n="setting.clip">Clip</label>
             <input
               type="number"
               id="maxDuration"
               value="6"
               min="1"
               max="120"
+              data-i18n-attr="aria-label:setting.clip.aria"
               aria-label="Clip duration in seconds"
             />
-            <span>sec</span>
+            <span data-i18n="setting.sec">sec</span>
           </div>
           <div class="zone-setting">
-            <label for="heavyAudio">Audio</label>
+            <label for="heavyAudio" data-i18n="setting.audio">Audio</label>
             <label class="toggle" style="margin-right: 10px">
               <input type="checkbox" id="heavyAudio" checked />
               <span class="slider"></span>
             </label>
-            <label for="heavyThumb">Thumb</label>
+            <label for="heavyThumb" data-i18n="setting.thumb">Thumb</label>
             <label class="toggle">
               <input type="checkbox" id="heavyThumb" />
               <span class="slider"></span>
@@ -615,6 +670,7 @@
       id="zoneWhatsapp"
       role="button"
       tabindex="0"
+      data-i18n-attr="aria-label:zone.whatsapp.aria"
       aria-label="Drop videos here for WhatsApp-ready compression"
     >
       <div class="wa-left">
@@ -633,15 +689,22 @@
             fill="#28D366"
           />
         </svg>
-        <div class="title">WhatsApp Ready</div>
+        <div class="title" data-i18n="zone.whatsapp.title">
+          WhatsApp-Ready Compression
+        </div>
       </div>
       <div class="wa-controls" onclick="event.stopPropagation()">
-        <select id="whatsappRes" class="wa-select" aria-label="Max resolution">
+        <select
+          id="whatsappRes"
+          class="wa-select"
+          data-i18n-attr="aria-label:zone.whatsapp.resAria"
+          aria-label="Max resolution"
+        >
           <option value="1080">1080p</option>
           <option value="720">720p</option>
         </select>
         <div class="wa-audio">
-          <label for="whatsappAudio">Audio</label>
+          <label for="whatsappAudio" data-i18n="setting.audio">Audio</label>
           <label class="toggle">
             <input type="checkbox" id="whatsappAudio" checked />
             <span class="slider"></span>
@@ -652,8 +715,13 @@
 
     <div class="queue-section">
       <div class="queue-header">
-        <h2>Queue</h2>
-        <button class="clear-all-btn" id="clearAllBtn" onclick="clearQueue()">
+        <h2 data-i18n="queue.title">Queue</h2>
+        <button
+          class="clear-all-btn"
+          id="clearAllBtn"
+          onclick="clearQueue()"
+          data-i18n="queue.clearAll"
+        >
           Clear All
         </button>
       </div>
@@ -661,6 +729,146 @@
     </div>
 
     <script>
+      const translations = {
+        en: {
+          "header.subheading":
+            "Drag'n'Drop Videos or Folders in any area below to get started.",
+          "zone.standard.title": "Standard Compression",
+          "zone.standard.desc":
+            "Web-optimized. <br />Drag'n'Drop Videos or Folders.",
+          "zone.standard.aria": "Drop videos here for standard web compression",
+          "zone.heavy.title": "Heavy Compression [2MB Max]",
+          "zone.heavy.desc": "Drag'n'Drop Videos or Folders.",
+          "zone.heavy.aria": "Drop videos here for heavy compression",
+          "zone.whatsapp.title": "WhatsApp-Ready Compression",
+          "zone.whatsapp.aria":
+            "Drop videos here for WhatsApp-ready compression",
+          "zone.whatsapp.resAria": "Max resolution",
+          "setting.thumb": "Thumb",
+          "setting.audio": "Audio",
+          "setting.clip": "Clip",
+          "setting.sec": "sec",
+          "setting.clip.aria": "Clip duration in seconds",
+          "queue.title": "Queue",
+          "queue.clearAll": "Clear All",
+          "queue.empty":
+            "No jobs in queue. Drag'n'Drop Videos or Folders above to start.",
+          "badge.heavy": "Heavy",
+          "badge.standard": "Standard",
+          "badge.whatsapp": "WhatsApp",
+          "status.waiting": "Waiting...",
+          "status.done": "Done",
+          "status.error": "Error",
+          "status.cancelled": "Cancelled",
+          "reveal.win": "Click to reveal in Explorer",
+          "reveal.mac": "Click to reveal in Finder",
+          "cancel.aria": "Cancel job",
+          "update.available": "New version available",
+          "update.versionAvailable": "v{version} available",
+          "update.download": "Download",
+          "update.ready": "Update ready",
+          "update.restart": "Restart",
+        },
+        "pt-BR": {
+          "header.subheading":
+            "Arraste e solte vídeos ou pastas em qualquer área abaixo para começar.",
+          "zone.standard.title": "Compressão Padrão",
+          "zone.standard.desc":
+            "Otimizada para web. <br />Arraste e solte vídeos ou pastas.",
+          "zone.standard.aria": "Solte vídeos aqui para compressão web padrão",
+          "zone.heavy.title": "Compressão Pesada [Máx. 2MB]",
+          "zone.heavy.desc": "Arraste e solte vídeos ou pastas.",
+          "zone.heavy.aria": "Solte vídeos aqui para compressão pesada",
+          "zone.whatsapp.title": "Compressão Pronta para WhatsApp",
+          "zone.whatsapp.aria":
+            "Solte vídeos aqui para compressão pronta para WhatsApp",
+          "zone.whatsapp.resAria": "Resolução máxima",
+          "setting.thumb": "Capa",
+          "setting.audio": "Áudio",
+          "setting.clip": "Corte",
+          "setting.sec": "seg",
+          "setting.clip.aria": "Duração do corte em segundos",
+          "queue.title": "Fila",
+          "queue.clearAll": "Limpar Tudo",
+          "queue.empty":
+            "Nenhum job na fila. Arraste e solte vídeos ou pastas acima para começar.",
+          "badge.heavy": "Pesada",
+          "badge.standard": "Padrão",
+          "badge.whatsapp": "WhatsApp",
+          "status.waiting": "Aguardando...",
+          "status.done": "Concluído",
+          "status.error": "Erro",
+          "status.cancelled": "Cancelado",
+          "reveal.win": "Clique para abrir no Explorer",
+          "reveal.mac": "Clique para abrir no Finder",
+          "cancel.aria": "Cancelar job",
+          "update.available": "Nova versão disponível",
+          "update.versionAvailable": "v{version} disponível",
+          "update.download": "Baixar",
+          "update.ready": "Atualização pronta",
+          "update.restart": "Reiniciar",
+        },
+      };
+
+      let currentLang =
+        localStorage.getItem("lang") ||
+        (navigator.language?.startsWith("pt") ? "pt-BR" : "en");
+      if (!translations[currentLang]) currentLang = "en";
+
+      function t(key, vars) {
+        let s = translations[currentLang][key] ?? translations.en[key] ?? key;
+        if (vars) for (const k in vars) s = s.replace(`{${k}}`, vars[k]);
+        return s;
+      }
+
+      function applyI18n() {
+        document.documentElement.lang = currentLang;
+        document.querySelectorAll("[data-i18n]").forEach((el) => {
+          const key = el.getAttribute("data-i18n");
+          const vars = {};
+          for (const { name, value } of el.attributes) {
+            if (
+              name.startsWith("data-i18n-") &&
+              name !== "data-i18n-html" &&
+              name !== "data-i18n-attr"
+            ) {
+              vars[name.slice("data-i18n-".length)] = value;
+            }
+          }
+          const val = t(key, vars);
+          if (el.getAttribute("data-i18n-html")) el.innerHTML = val;
+          else el.textContent = val;
+        });
+        document.querySelectorAll("[data-i18n-attr]").forEach((el) => {
+          el.getAttribute("data-i18n-attr")
+            .split(",")
+            .forEach((pair) => {
+              const [attr, key] = pair.trim().split(":");
+              if (attr && key) el.setAttribute(attr, t(key));
+            });
+        });
+        document.documentElement.style.setProperty(
+          "--queue-empty",
+          JSON.stringify(t("queue.empty")),
+        );
+        document.querySelectorAll(".lang-toggle button").forEach((b) => {
+          b.classList.toggle("active", b.dataset.lang === currentLang);
+        });
+      }
+
+      function setLang(lang) {
+        if (!translations[lang] || lang === currentLang) return;
+        currentLang = lang;
+        localStorage.setItem("lang", lang);
+        applyI18n();
+        if (typeof renderQueue === "function") renderQueue();
+      }
+
+      document.querySelectorAll(".lang-toggle button").forEach((b) => {
+        b.addEventListener("click", () => setLang(b.dataset.lang));
+      });
+      applyI18n();
+
       const queue = [];
       let processing = false;
       let jobCounter = 0;
@@ -686,20 +894,25 @@
 
       // macOS: link to release page (can't auto-install without signing)
       window.api.onUpdateAvailable(({ version, url }) => {
-        document.getElementById("updateBannerText").textContent =
-          `v${version} available`;
+        const textEl = document.getElementById("updateBannerText");
+        textEl.textContent = t("update.versionAvailable", { version });
+        textEl.setAttribute("data-i18n", "update.versionAvailable");
+        textEl.dataset.i18nVersion = version;
         const btn = document.getElementById("updateBannerBtn");
-        btn.textContent = "Download";
+        btn.textContent = t("update.download");
+        btn.setAttribute("data-i18n", "update.download");
         btn.onclick = () => window.api.openExternal(url);
         document.getElementById("updateBanner").classList.add("show");
       });
 
       // Windows: update downloaded in background, just needs restart
       window.api.onUpdateReadyInstall(() => {
-        document.getElementById("updateBannerText").textContent =
-          "Update ready";
+        const textEl = document.getElementById("updateBannerText");
+        textEl.textContent = t("update.ready");
+        textEl.setAttribute("data-i18n", "update.ready");
         const btn = document.getElementById("updateBannerBtn");
-        btn.textContent = "Restart";
+        btn.textContent = t("update.restart");
+        btn.setAttribute("data-i18n", "update.restart");
         btn.onclick = () => window.api.installUpdate();
         document.getElementById("updateBanner").classList.add("show");
       });
@@ -783,38 +996,38 @@
 
           const badge =
             job.type === "heavy"
-              ? "Heavy"
+              ? t("badge.heavy")
               : job.type === "whatsapp"
-                ? "WhatsApp"
-                : "Standard";
-          let statusText = "Waiting...";
+                ? t("badge.whatsapp")
+                : t("badge.standard");
+          let statusText = t("status.waiting");
           let statusClass = "";
           if (job.status === "processing") {
             statusText = "0%";
             statusClass = "processing";
           }
           if (job.status === "done") {
-            statusText = "Done";
+            statusText = t("status.done");
             statusClass = "done";
           }
           if (job.status === "error") {
-            statusText = "Error";
+            statusText = t("status.error");
             statusClass = "error";
           }
           if (job.status === "cancelled") {
-            statusText = "Cancelled";
+            statusText = t("status.cancelled");
             statusClass = "cancelled";
           }
 
           const cancelBtn =
             job.status === "processing"
-              ? `<button class="cancel-btn" onclick="cancelJob(${job.id})" aria-label="Cancel job">✕</button>`
+              ? `<button class="cancel-btn" onclick="cancelJob(${job.id})" aria-label="${t("cancel.aria")}">✕</button>`
               : "";
 
           const revealLabel =
             window.api?.platform === "win32"
-              ? "Click to reveal in Explorer"
-              : "Click to reveal in Finder";
+              ? t("reveal.win")
+              : t("reveal.mac");
           div.innerHTML = `
           <span class="badge">${badge}</span>
           <span class="filename" role="button" tabindex="0" title="${revealLabel}" onclick="revealJob(${job.id})">${job.fileName}</span>
