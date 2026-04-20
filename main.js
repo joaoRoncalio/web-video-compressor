@@ -366,6 +366,13 @@ ipcMain.handle("compress-standard", async (_event, filePath, generateThumb, jobI
     await runFfmpeg(args, duration, jobId);
   }, { allowFullGpu: true });
 
+  const inputSize = fs.statSync(filePath).size;
+  const outputSize = fs.statSync(output).size;
+  if (outputSize >= inputSize) {
+    fs.unlinkSync(output);
+    throw new Error("OUTPUT_LARGER");
+  }
+
   if (generateThumb) await generateThumbnail(output);
   return output;
 });

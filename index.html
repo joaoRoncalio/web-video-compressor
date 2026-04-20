@@ -10,6 +10,45 @@
       rel="stylesheet"
     />
     <style>
+      :root {
+        --color-bg: #040404;
+        --color-surface: #0a0a0a;
+        --color-surface-2: #0f0f0f;
+        --color-border: #1a1a1a;
+        --color-border-mid: #222;
+        --color-border-light: #333;
+        --color-text: #f0f0f0;
+        --color-text-strong: #f8f6f0;
+        --color-muted: #666;
+        --color-muted-2: #555;
+        --color-muted-3: #3a3a3a;
+        --color-muted-4: #444;
+        --color-muted-5: #888;
+        --color-muted-6: #2a2a2a;
+        --color-accent: #eb6f46;
+        --color-accent-bg: rgba(235, 111, 70, 0.06);
+        --color-accent-bg-2: rgba(235, 111, 70, 0.08);
+        --color-accent-bg-badge: rgba(235, 111, 70, 0.15);
+        --color-standard-bg: rgba(248, 246, 240, 0.04);
+        --color-standard-bg-badge: rgba(248, 246, 240, 0.1);
+        --color-whatsapp: #28d366;
+        --color-whatsapp-bg: rgba(40, 211, 102, 0.06);
+        --color-whatsapp-bg-badge: rgba(40, 211, 102, 0.15);
+        --color-whatsapp-surface: #0f1f12;
+        --color-whatsapp-border: #1f3a2a;
+        --color-processing: #ffb400;
+        --color-done: #4caf50;
+        --color-error: #eb6f46;
+
+        --text-xs: 9px;
+        --text-sm: 10px;
+        --text-base: 11px;
+        --text-md: 12px;
+        --text-lg: 13px;
+        --text-xl: 1.5rem;
+        --text-icon: 28px;
+      }
+
       * {
         box-sizing: border-box;
         margin: 0;
@@ -18,8 +57,8 @@
 
       body {
         font-family: "JetBrains Mono", monospace;
-        background: #040404;
-        color: #f0f0f0;
+        background: var(--color-bg);
+        color: var(--color-text);
         padding: 28px 32px;
         user-select: none;
         min-height: 100vh;
@@ -31,9 +70,9 @@
         position: fixed;
         top: 8px;
         left: 12px;
-        font-size: 9px;
+        font-size: var(--text-xs);
         font-weight: 600;
-        color: #3a3a3a;
+        color: var(--color-muted-3);
         letter-spacing: 0.06em;
         text-transform: uppercase;
         pointer-events: none;
@@ -43,9 +82,9 @@
         position: fixed;
         top: 8px;
         right: 12px;
-        font-size: 9px;
+        font-size: var(--text-xs);
         font-weight: 600;
-        color: #3a3a3a;
+        color: var(--color-muted-3);
         letter-spacing: 0.06em;
         text-transform: uppercase;
         pointer-events: none;
@@ -61,7 +100,7 @@
         left: 12px;
         display: flex;
         gap: 6px;
-        font-size: 9px;
+        font-size: var(--text-xs);
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -72,10 +111,10 @@
         font-family: "JetBrains Mono", monospace;
         background: none;
         border: none;
-        color: #3a3a3a;
+        color: var(--color-muted-3);
         cursor: pointer;
         padding: 2px 4px;
-        font-size: 9px;
+        font-size: var(--text-xs);
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -83,15 +122,15 @@
       }
 
       .lang-toggle button:hover {
-        color: #888;
+        color: var(--color-muted-5);
       }
 
       .lang-toggle button.active {
-        color: #f8f6f0;
+        color: var(--color-text-strong);
       }
 
       .lang-toggle .sep {
-        color: #2a2a2a;
+        color: var(--color-muted-6);
       }
 
       .header-title {
@@ -103,17 +142,17 @@
       }
 
       h1 {
-        font-size: 1.5rem;
+        font-size: var(--text-xl);
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        color: #f8f6f0;
+        color: var(--color-text-strong);
         text-align: center;
       }
 
       .header-subheading {
         font-size: 0.75rem;
-        color: #666;
+        color: var(--color-muted);
         font-weight: 600;
       }
 
@@ -130,7 +169,7 @@
         align-items: center;
         justify-content: center;
         gap: 8px;
-        font-size: 11px;
+        font-size: var(--text-base);
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -142,17 +181,17 @@
         width: 52px;
         padding: 4px 6px;
         border-radius: 6px;
-        border: 2px solid #333;
-        background: #0a0a0a;
-        color: #f8f6f0;
-        font-size: 12px;
+        border: 2px solid var(--color-border-light);
+        background: var(--color-surface);
+        color: var(--color-text-strong);
+        font-size: var(--text-md);
         font-weight: 700;
         text-align: center;
       }
 
       .zone-setting input[type="number"]:focus {
         outline: none;
-        border-color: #eb6f46;
+        border-color: var(--color-accent);
       }
 
       /* Toggle switch */
@@ -172,7 +211,7 @@
       .toggle .slider {
         position: absolute;
         inset: 0;
-        background: #333;
+        background: var(--color-border-light);
         border-radius: 9px;
         cursor: pointer;
         transition: background 0.2s;
@@ -185,7 +224,7 @@
         height: 14px;
         left: 2px;
         top: 2px;
-        background: #666;
+        background: var(--color-muted);
         border-radius: 50%;
         transition:
           transform 0.2s,
@@ -193,12 +232,12 @@
       }
 
       .toggle input:checked + .slider {
-        background: #eb6f46;
+        background: var(--color-accent);
       }
 
       .toggle input:checked + .slider::before {
         transform: translateX(14px);
-        background: #f8f6f0;
+        background: var(--color-text-strong);
       }
 
       /* Drop zones container */
@@ -216,62 +255,62 @@
         justify-content: center;
         gap: 8px;
         padding: 32px 20px;
-        border: 2px dashed #222;
+        border: 2px dashed var(--color-border-mid);
         border-radius: 14px;
         text-align: center;
         cursor: pointer;
         transition: all 150ms ease;
         min-height: 160px;
-        background: #0a0a0a;
+        background: var(--color-surface);
       }
 
       .drop-zone:hover {
-        border-color: #444;
+        border-color: var(--color-muted-4);
         background: #111;
       }
 
       .drop-zone.dragover {
-        border-color: #eb6f46;
-        background: rgba(235, 111, 70, 0.06);
+        border-color: var(--color-accent);
+        background: var(--color-accent-bg);
       }
 
       .drop-zone.heavy:hover,
       .drop-zone.heavy.dragover {
-        border-color: #eb6f46;
-        background: rgba(235, 111, 70, 0.08);
+        border-color: var(--color-accent);
+        background: var(--color-accent-bg-2);
       }
 
       .drop-zone.standard:hover,
       .drop-zone.standard.dragover {
-        border-color: #f8f6f0;
-        background: rgba(248, 246, 240, 0.04);
+        border-color: var(--color-text-strong);
+        background: var(--color-standard-bg);
       }
 
       .drop-zone .icon {
-        font-size: 28px;
+        font-size: var(--text-icon);
         opacity: 0.6;
       }
 
       .drop-zone .title {
-        font-size: 13px;
+        font-size: var(--text-lg);
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.1em;
       }
 
       .drop-zone .desc {
-        font-size: 11px;
+        font-size: var(--text-base);
         font-weight: 500;
-        color: #666;
+        color: var(--color-muted);
         max-width: 220px;
         line-height: 1.5;
       }
 
       .drop-zone.heavy .title {
-        color: #eb6f46;
+        color: var(--color-accent);
       }
       .drop-zone.standard .title {
-        color: #f8f6f0;
+        color: var(--color-text-strong);
       }
 
       /* Queue */
@@ -283,22 +322,22 @@
       }
 
       .queue-section h2 {
-        font-size: 12px;
+        font-size: var(--text-md);
         font-weight: 800;
-        color: #666;
+        color: var(--color-muted);
         text-transform: uppercase;
         letter-spacing: 0.12em;
         margin-bottom: 0;
       }
 
       .clear-all-btn {
-        font-size: 10px;
+        font-size: var(--text-sm);
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        color: #555;
+        color: var(--color-muted-2);
         background: none;
-        border: 1px solid #222;
+        border: 1px solid var(--color-border-mid);
         border-radius: 6px;
         padding: 4px 10px;
         cursor: pointer;
@@ -308,8 +347,8 @@
       }
 
       .clear-all-btn:hover {
-        color: #eb6f46;
-        border-color: #eb6f46;
+        color: var(--color-accent);
+        border-color: var(--color-accent);
       }
 
       .queue {
@@ -323,8 +362,8 @@
           --queue-empty,
           "No jobs in queue. Drag'n'Drop Videos or Folders above to start."
         );
-        color: #333;
-        font-size: 12px;
+        color: var(--color-border-light);
+        font-size: var(--text-md);
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -340,11 +379,11 @@
 
       .cancel-btn {
         background: none;
-        border: 1px solid #333;
+        border: 1px solid var(--color-border-light);
         border-radius: 5px;
-        color: #555;
+        color: var(--color-muted-2);
         cursor: pointer;
-        font-size: 10px;
+        font-size: var(--text-sm);
         font-weight: 800;
         line-height: 1;
         padding: 3px 7px;
@@ -354,12 +393,12 @@
       }
 
       .cancel-btn:hover {
-        color: #eb6f46;
-        border-color: #eb6f46;
+        color: var(--color-accent);
+        border-color: var(--color-accent);
       }
 
       .job .status.cancelled {
-        color: #555;
+        color: var(--color-muted-2);
       }
 
       .job {
@@ -368,25 +407,25 @@
         align-items: center;
         gap: 12px;
         padding: 12px 16px;
-        background: #0f0f0f;
-        border: 2px solid #1a1a1a;
+        background: var(--color-surface-2);
+        border: 2px solid var(--color-border);
         border-radius: 10px;
-        font-size: 12px;
-        border-left: 4px solid #333;
+        font-size: var(--text-md);
+        border-left: 4px solid var(--color-border-light);
       }
 
       .job.heavy {
-        border-left-color: #eb6f46;
+        border-left-color: var(--color-accent);
       }
       .job.standard {
-        border-left-color: #f8f6f0;
+        border-left-color: var(--color-text-strong);
       }
       .job.whatsapp {
-        border-left-color: #28d366;
+        border-left-color: var(--color-whatsapp);
       }
       .job.whatsapp .badge {
-        background: rgba(40, 211, 102, 0.15);
-        color: #28d366;
+        background: var(--color-whatsapp-bg-badge);
+        color: var(--color-whatsapp);
       }
 
       /* WhatsApp Ready strip */
@@ -397,13 +436,13 @@
         min-height: 0;
         padding: 18px 22px;
         margin-bottom: 16px;
-        border-color: #1f3a2a;
-        background: #0a0a0a;
+        border-color: var(--color-whatsapp-border);
+        background: var(--color-surface);
       }
       .drop-zone.whatsapp:hover,
       .drop-zone.whatsapp.dragover {
-        border-color: #28d366;
-        background: rgba(40, 211, 102, 0.06);
+        border-color: var(--color-whatsapp);
+        background: var(--color-whatsapp-bg);
       }
       .drop-zone.whatsapp .wa-left {
         display: flex;
@@ -415,8 +454,8 @@
         flex-shrink: 0;
       }
       .drop-zone.whatsapp .title {
-        color: #28d366;
-        font-size: 13px;
+        color: var(--color-whatsapp);
+        font-size: var(--text-lg);
       }
       .drop-zone.whatsapp .wa-controls {
         display: flex;
@@ -425,12 +464,12 @@
       }
       .wa-select {
         font-family: "JetBrains Mono", monospace;
-        background: #0a0a0a;
-        color: #f8f6f0;
-        border: 2px solid #333;
+        background: var(--color-surface);
+        color: var(--color-text-strong);
+        border: 2px solid var(--color-border-light);
         border-radius: 6px;
         padding: 5px 10px;
-        font-size: 11px;
+        font-size: var(--text-base);
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -439,7 +478,7 @@
 
       .wa-select:focus {
         outline: none;
-        border-color: #28d366;
+        border-color: var(--color-whatsapp);
       }
 
       .wa-audio {
@@ -450,18 +489,18 @@
       }
 
       .wa-audio label {
-        font-size: 11px;
+        font-size: var(--text-base);
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.06em;
         color: #999;
       }
       .drop-zone.whatsapp .toggle input:checked + .slider {
-        background: #28d366;
+        background: var(--color-whatsapp);
       }
 
       .job .badge {
-        font-size: 10px;
+        font-size: var(--text-sm);
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -471,13 +510,13 @@
       }
 
       .job.heavy .badge {
-        background: rgba(235, 111, 70, 0.15);
-        color: #eb6f46;
+        background: var(--color-accent-bg-badge);
+        color: var(--color-accent);
       }
 
       .job.standard .badge {
-        background: rgba(248, 246, 240, 0.1);
-        color: #f8f6f0;
+        background: var(--color-standard-bg-badge);
+        color: var(--color-text-strong);
       }
 
       .job .filename {
@@ -490,34 +529,34 @@
       }
 
       .job .filename:hover {
-        color: #eb6f46;
+        color: var(--color-accent);
         text-decoration: underline;
       }
 
       .job .status {
-        font-size: 11px;
+        font-size: var(--text-base);
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-        color: #555;
+        color: var(--color-muted-2);
         white-space: nowrap;
       }
 
       .job .status.processing {
-        color: #ffb400;
+        color: var(--color-processing);
       }
       .job .status.done {
-        color: #4caf50;
+        color: var(--color-done);
       }
       .job .status.error {
-        color: #eb6f46;
+        color: var(--color-error);
       }
 
       /* Progress bar */
       .progress-bar {
         grid-column: 1 / -1;
         height: 3px;
-        background: #1a1a1a;
+        background: var(--color-border);
         border-radius: 2px;
         margin-top: 6px;
         overflow: hidden;
@@ -525,14 +564,14 @@
 
       .progress-bar .fill {
         height: 100%;
-        background: #ffb400;
+        background: var(--color-processing);
         border-radius: 2px;
         transition: width 0.3s ease;
         width: 0%;
       }
 
       .job.done .progress-bar .fill {
-        background: #4caf50;
+        background: var(--color-done);
         width: 100%;
       }
 
@@ -545,14 +584,14 @@
         align-items: center;
         gap: 12px;
         padding: 10px 14px;
-        background: #0f1f12;
-        border: 2px solid #28d366;
+        background: var(--color-whatsapp-surface);
+        border: 2px solid var(--color-whatsapp);
         border-radius: 10px;
-        font-size: 11px;
+        font-size: var(--text-base);
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-        color: #28d366;
+        color: var(--color-whatsapp);
         z-index: 100;
       }
       .update-banner.show {
@@ -560,12 +599,12 @@
       }
       .update-banner button {
         font-family: "JetBrains Mono", monospace;
-        background: #28d366;
+        background: var(--color-whatsapp);
         color: #04140a;
         border: none;
         border-radius: 6px;
         padding: 5px 10px;
-        font-size: 10px;
+        font-size: var(--text-sm);
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -1011,7 +1050,7 @@
             statusClass = "done";
           }
           if (job.status === "error") {
-            statusText = t("status.error");
+            statusText = job.errorMsg ?? t("status.error");
             statusClass = "error";
           }
           if (job.status === "cancelled") {
@@ -1112,7 +1151,12 @@
           job.outputPath = outputPath;
           job.status = "done";
         } catch (err) {
-          if (job.status !== "cancelled") job.status = "error";
+          if (job.status !== "cancelled") {
+            job.status = "error";
+            if (err.message === "OUTPUT_LARGER") {
+              job.errorMsg = "Arquivo não comprimido: o resultado seria maior que o original.";
+            }
+          }
           console.error(`Job ${job.id} failed:`, err);
         }
 
