@@ -1,6 +1,6 @@
 [![en](https://img.shields.io/badge/lang-en-blue)](README.md)
 
-[![CompressorFiore Screenshot](/assets/prints.jpg)]
+![CompressorFiore Screenshot](/assets/prints.jpg)
 
 # CompressorFiore
 
